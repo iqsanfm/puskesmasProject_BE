@@ -22,16 +22,83 @@ enum PositionUser {
   bidan_koordinator
 }
 
+enum VerificationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
 model user { 
-  user_id String @id @default(uuid())
-  full_name String @db.VarChar(255)
-  password String @db.VarChar(255)
-  phone_number String? @db.VarChar(20)
-  email String @db.VarChar(255)
-  address String @db.VarChar(255)
-  position_user PositionUser
-  role Role @default(USER)
-  status_user StatusUser @default(INACTIVE)
+  user_id       String        @id @default(uuid())
+  full_name     String        @db.VarChar(255)
+  password      String        @db.VarChar(255)
+  phone_number  String?       @db.VarChar(20)
+  email         String        @unique @db.VarChar(255)
+  address       String        @db.VarChar(255)
+  position_user PositionUser?
+  village_id    String?
+  role          Role          @default(USER)
+  status_user   StatusUser    @default(INACTIVE)
+  created_at    DateTime      @default(now())
+  updated_at    DateTime      @updatedAt
+  
+  village        village?        @relation(fields: [village_id], references: [village_id])
+  practice_place practice_place?
+  verified_data  health_data[]   @relation("VerifiedData")
+  
+  @@map("users")
+}
+
+model village {
+  village_id   String   @id @default(uuid())
+  nama_desa    String   @db.VarChar(255)
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
+  
+  users           user[]
+  practice_places practice_place[]
+  
+  @@map("villages")
+}
+
+model practice_place {
+  practice_id  String   @id @default(uuid())
+  nama_praktik String   @db.VarChar(255)
+  village_id   String
+  alamat       String   @db.VarChar(255)
+  user_id      String   @unique
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
+  
+  village     village       @relation(fields: [village_id], references: [village_id])
+  user        user          @relation(fields: [user_id], references: [user_id])
+  health_data health_data[]
+  
+  @@map("practice_places")
+}
+
+model health_data {
+  data_id         String             @id @default(uuid())
+  practice_id     String
+  nama_pasien     String             @db.VarChar(255)
+  umur_pasien     Int?
+  jenis_data      String             @db.VarChar(100)
+  catatan         String?            @db.Text
+  tanggal_periksa DateTime           @default(now())
+  
+  status_verifikasi      VerificationStatus @default(PENDING)
+  diverifikasi_oleh      String?
+  tanggal_verifikasi     DateTime?
+  alasan_penolakan       String?            @db.Text
+  
+  jumlah_revisi          Int                @default(0)
+  alasan_reject_terakhir String?            @db.Text
+  
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
+  
+  practice_place practice_place @relation(fields: [practice_id], references: [practice_id])
+  verifier       user?          @relation("VerifiedData", fields: [diverifikasi_oleh], references: [user_id])
+  
+  @@map("health_data")
 }

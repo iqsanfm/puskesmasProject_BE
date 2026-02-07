@@ -1,6 +1,9 @@
 import express from "express";
 import dotenv from "dotenv";
 import userRoutes from "./src/routes/user.routes.js";
+import villageRoutes from "./src/routes/village.routes.js";
+import practicePlaceRoutes from "./src/routes/practicePlace.routes.js";
+import healthDataRoutes from "./src/routes/healthData.routes.js";
 
 dotenv.config();
 
@@ -9,6 +12,9 @@ const PORT = process.env.PORT;
 
 app.use(express.json())
 app.use('/api', userRoutes)
+app.use('/api', villageRoutes)
+app.use('/api', practicePlaceRoutes)
+app.use('/api', healthDataRoutes)
 
 app.get("/", (req, res) => {
     res.send("Hello World!");

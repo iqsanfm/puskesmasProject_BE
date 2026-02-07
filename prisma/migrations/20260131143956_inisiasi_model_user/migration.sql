@@ -14,6 +14,7 @@ CREATE TABLE "user" (
     "password" VARCHAR(255) NOT NULL,
     "phone_number" VARCHAR(20),
     "email" VARCHAR(255) NOT NULL,
+    CONSTRAINT "user_email_key" UNIQUE ("email"),
     "address" VARCHAR(255) NOT NULL,
     "position_user" "PositionUser" NOT NULL,
     "role" "Role" NOT NULL DEFAULT 'USER',
