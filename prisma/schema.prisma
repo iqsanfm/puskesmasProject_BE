@@ -46,6 +46,16 @@ model user {
   practice_place practice_place?
   verified_data  health_data[]   @relation("VerifiedData")
   
+  // Audit trail relations for bidan praktik data
+  created_pemeriksaan_kehamilan  pemeriksaan_kehamilan[] @relation("CreatedPemeriksaan")
+  updated_pemeriksaan_kehamilan  pemeriksaan_kehamilan[] @relation("UpdatedPemeriksaan")
+  created_persalinan             persalinan[]            @relation("CreatedPersalinan")
+  updated_persalinan             persalinan[]            @relation("UpdatedPersalinan")
+  created_keluarga_berencana     keluarga_berencana[]    @relation("CreatedKB")
+  updated_keluarga_berencana     keluarga_berencana[]    @relation("UpdatedKB")
+  created_imunisasi              imunisasi[]             @relation("CreatedImunisasi")
+  updated_imunisasi              imunisasi[]             @relation("UpdatedImunisasi")
+  
   @@map("users")
 }
 
@@ -74,6 +84,12 @@ model practice_place {
   user        user          @relation(fields: [user_id], references: [user_id])
   health_data health_data[]
   
+  // Relations for bidan praktik data
+  pemeriksaan_kehamilan pemeriksaan_kehamilan[]
+  persalinan            persalinan[]
+  keluarga_berencana    keluarga_berencana[]
+  imunisasi             imunisasi[]
+  
   @@map("practice_places")
 }
 
@@ -101,4 +117,222 @@ model health_data {
   verifier       user?          @relation("VerifiedData", fields: [diverifikasi_oleh], references: [user_id])
   
   @@map("health_data")
+}
+
+// ============================================
+// BIDAN PRAKTIK DATA INPUT MODELS
+// ============================================
+
+// Master Pasien
+model pasien {
+  pasien_id      String   @id @default(uuid())
+  nik            String   @unique @db.VarChar(16)
+  nama           String   @db.VarChar(255)
+  alamat_lengkap String   @db.Text
+  tanggal_lahir  DateTime
+  
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+  
+  pemeriksaan_kehamilan pemeriksaan_kehamilan[]
+  persalinan            persalinan[]
+  keluarga_berencana    keluarga_berencana[]
+  imunisasi             imunisasi[]
+  
+  @@map("pasien")
+}
+
+// Pemeriksaan Kehamilan
+model pemeriksaan_kehamilan {
+  id              String   @id @default(uuid())
+  practice_id     String
+  pasien_id       String
+  
+  tanggal         DateTime @default(now())
+  gpa             String   @db.VarChar(20)  // Format: "G2P1A0"
+  umur_kehamilan  Int                        // dalam minggu
+  status_tt       String   @db.VarChar(50)  // "TT1", "TT2", "TT2+", dll
+  jenis_kunjungan String   @db.VarChar(50)  // "ANC", "Rujukan", dll
+  td              String   @db.VarChar(20)  // Format: "120/80"
+  lila            Float?                     // Lingkar Lengan Atas (cm)
+  bb              Float?                     // Berat Badan (kg)
+  resti           String   @db.VarChar(50)  // "RENDAH", "SEDANG", "TINGGI"
+  catatan         String?  @db.Text
+  
+  // Audit trail
+  created_by      String
+  updated_by      String?
+  
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+  
+  // Relations
+  practice_place practice_place        @relation(fields: [practice_id], references: [practice_id])
+  pasien         pasien                @relation(fields: [pasien_id], references: [pasien_id])
+  creator        user                  @relation("CreatedPemeriksaan", fields: [created_by], references: [user_id])
+  updater        user?                 @relation("UpdatedPemeriksaan", fields: [updated_by], references: [user_id])
+  ceklab_report  ceklab_report?
+  
+  @@map("pemeriksaan_kehamilan")
+}
+
+// Cek Lab Report (One-to-One dengan Pemeriksaan Kehamilan)
+model ceklab_report {
+  id                       String   @id @default(uuid())
+  pemeriksaan_kehamilan_id String   @unique
+  
+  hiv                      Boolean  @default(false)
+  hbsag                    Boolean  @default(false)
+  sifilis                  Boolean  @default(false)
+  hb                       Float?
+  golongan_darah           String?  @db.VarChar(5)  // "A", "B", "AB", "O"
+  
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+  
+  pemeriksaan_kehamilan pemeriksaan_kehamilan @relation(fields: [pemeriksaan_kehamilan_id], references: [id], onDelete: Cascade)
+  
+  @@map("ceklab_reports")
+}
+
+// Persalinan
+model persalinan {
+  id                 String   @id @default(uuid())
+  practice_id        String
+  pasien_id          String
+  
+  tanggal_partus     DateTime
+  gravida            Int      // G
+  para               Int      // P
+  abortus            Int      // A
+  
+  // Vitamin & Imunisasi
+  vit_k              Boolean  @default(false)
+  hb_0               Boolean  @default(false)  // Hepatitis B 0
+  vit_a_bufas        Boolean  @default(false)  // Vitamin A Ibu Nifas
+  
+  catatan            String?  @db.Text
+  
+  // Audit trail
+  created_by      String
+  updated_by      String?
+  
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+  
+  practice_place          practice_place           @relation(fields: [practice_id], references: [practice_id])
+  pasien                  pasien                   @relation(fields: [pasien_id], references: [pasien_id])
+  creator                 user                     @relation("CreatedPersalinan", fields: [created_by], references: [user_id])
+  updater                 user?                    @relation("UpdatedPersalinan", fields: [updated_by], references: [user_id])
+  keadaan_ibu_persalinan  keadaan_ibu_persalinan?
+  keadaan_bayi_persalinan keadaan_bayi_persalinan?
+  
+  @@map("persalinan")
+}
+
+// Keadaan Ibu Persalinan (One-to-One dengan Persalinan)
+model keadaan_ibu_persalinan {
+  id             String   @id @default(uuid())
+  persalinan_id  String   @unique
+  
+  baik           Boolean  @default(true)
+  hap            Boolean  @default(false)  // Hemorrhage Post Partum
+  partus_lama    Boolean  @default(false)
+  pre_eklamsi    Boolean  @default(false)
+  hidup          Boolean  @default(true)
+  
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+  
+  persalinan persalinan @relation(fields: [persalinan_id], references: [id], onDelete: Cascade)
+  
+  @@map("keadaan_ibu_persalinan")
+}
+
+// Keadaan Bayi Persalinan (One-to-One dengan Persalinan)
+model keadaan_bayi_persalinan {
+  id                String   @id @default(uuid())
+  persalinan_id     String   @unique
+  
+  pb                Float?   // Panjang Badan (cm)
+  bb                Float?   // Berat Badan (gram)
+  jenis_kelamin     String   @db.VarChar(20)  // "LAKI_LAKI", "PEREMPUAN"
+  asfiksia          Boolean  @default(false)
+  rds               Boolean  @default(false)  // Respiratory Distress Syndrome
+  cacat_bawaan      Boolean  @default(false)
+  keterangan_cacat  String?  @db.Text         // Jika ada cacat, jelaskan
+  hidup             Boolean  @default(true)
+  
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+  
+  persalinan persalinan @relation(fields: [persalinan_id], references: [id], onDelete: Cascade)
+  
+  @@map("keadaan_bayi_persalinan")
+}
+
+// Keluarga Berencana
+model keluarga_berencana {
+  id          String   @id @default(uuid())
+  practice_id String
+  pasien_id   String
+  
+  tanggal_kunjungan     DateTime @default(now())
+  
+  // Data Anak Hidup (Historis per kunjungan)
+  jumlah_anak_laki      Int      @default(0)
+  jumlah_anak_perempuan Int      @default(0)
+  
+  // Indikasi/Kondisi
+  at                    Boolean  @default(false) // Abortus Terancam
+  
+  // Metode KB (Single Choice: PIL, SUNTIK, IMPLANT, IUD, KONDOM, dll)
+  alat_kontrasepsi      String   @db.VarChar(50)
+  
+  keterangan            String?  @db.Text
+  
+  // Audit trail
+  created_by  String
+  updated_by  String?
+  
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+  
+  practice_place practice_place @relation(fields: [practice_id], references: [practice_id])
+  pasien         pasien         @relation(fields: [pasien_id], references: [pasien_id])
+  creator        user           @relation("CreatedKB", fields: [created_by], references: [user_id])
+  updater        user?          @relation("UpdatedKB", fields: [updated_by], references: [user_id])
+  
+  @@map("keluarga_berencana")
+}
+
+// Imunisasi (Bayi/Anak sebagai Pasien)
+model imunisasi {
+  id              String   @id @default(uuid())
+  practice_id     String
+  pasien_id       String   // ID Bayi/Anak
+  
+  tgl_imunisasi   DateTime @default(now())
+  berat_badan     Float    // Berat badan (kg/gram)
+  suhu_badan      Float?   // Opsional (C)
+  nama_orangtua   String   @db.VarChar(255)
+  
+  // Jenis Imunisasi (HB_0, BCG, DPT_1, dll)
+  jenis_imunisasi String   @db.VarChar(50)
+  
+  catatan         String?  @db.Text
+  
+  // Audit trail
+  created_by      String
+  updated_by      String?
+  
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+  
+  practice_place practice_place @relation(fields: [practice_id], references: [practice_id])
+  pasien         pasien         @relation(fields: [pasien_id], references: [pasien_id])
+  creator        user           @relation("CreatedImunisasi", fields: [created_by], references: [user_id])
+  updater        user?          @relation("UpdatedImunisasi", fields: [updated_by], references: [user_id])
+  
+  @@map("imunisasi")
 }

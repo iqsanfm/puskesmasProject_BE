@@ -6,6 +6,11 @@ import userRoutes from "./src/routes/user.routes.js";
 import villageRoutes from "./src/routes/village.routes.js";
 import practicePlaceRoutes from "./src/routes/practicePlace.routes.js";
 import healthDataRoutes from "./src/routes/healthData.routes.js";
+import pemeriksaanKehamilanRoutes from "./src/routes/pemeriksaan-kehamilan.routes.js";
+import pasienRoutes from "./src/routes/pasien.routes.js";
+import persalinanRoutes from "./src/routes/persalinan.routes.js";
+import keluargaBerencanaRoutes from "./src/routes/keluarga-berencana.routes.js";
+import imunisasiRoutes from "./src/routes/imunisasi.routes.js";
 
 dotenv.config();
 
@@ -28,6 +33,11 @@ app.use(cors(corsOptions));
 app.use(express.json());
 app.use("/api", authRoutes);
 app.use("/api", healthDataRoutes); // Pindahkan ke atas sebelum userRoutes
+app.use("/api", pemeriksaanKehamilanRoutes); // Bidan praktik data routes
+app.use("/api", persalinanRoutes); // Bidan praktik data routes
+app.use("/api", keluargaBerencanaRoutes); // Bidan praktik data routes
+app.use("/api", imunisasiRoutes); // Bidan praktik data routes
+app.use("/api", pasienRoutes); // Master data pasien
 app.use("/api", villageRoutes);
 app.use("/api", practicePlaceRoutes);
 app.use("/api", userRoutes); // Pindahkan ke bawah karena punya middleware ADMIN global
